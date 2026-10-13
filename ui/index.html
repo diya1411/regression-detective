@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Regression Detective</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<div class="wrap">
+
+  <div class="appbar">
+    <div class="brand"><span class="dot"></span>Regression Detective</div>
+    <div class="crumb" id="crumb">no investigation</div>
+    <div class="spacer"></div>
+    <span class="pill" id="llmpill" title="LLM">LLM …</span>
+    <span class="pill" id="sbpill" title="Sandbox">sandbox …</span>
+    <span class="pill idle" id="status">idle</span>
+    <span class="clock" id="clock">0:00</span>
+  </div>
+
+  <details class="card launcher" id="launcher" open>
+    <summary><h3>Start or replay an investigation <span class="tag">eval corpus or any local / GitHub repo</span></h3></summary>
+    <div class="body">
+      <div class="form">
+        <label class="wide">Eval case
+          <select id="f-fixture"><option value="">— custom repository —</option></select>
+        </label>
+        <label class="wide">Repository (path or git URL)<input id="f-repo" placeholder="/path/to/repo or https://github.com/org/repo"></label>
+        <label class="wide">Failing test (pytest node id)<input id="f-test" placeholder="tests/test_cart.py::test_checkout_total"></label>
+        <label>Last good<input id="f-lg" placeholder="from CI history"></label>
+        <label>Head<input id="f-head" value="HEAD"></label>
+        <label>Max probes<input id="f-probes" type="number" value="16" min="1" max="64"></label>
+        <label>Flaky runs<input id="f-runs" type="number" value="10" min="2" max="50"></label>
+        <label class="chk"><input id="f-offline" type="checkbox"> offline (no LLM)</label>
+        <label class="chk"><input id="f-history" type="checkbox" checked> history index (RAG priors)</label>
+      </div>
+      <div class="ctl">
+        <button class="primary" id="start">▶ Investigate</button>
+        <span class="sep"></span>
+        <select id="past"><option value="">past investigations…</option></select>
+        <select id="speed" title="replay speed">
+          <option value="0">instant</option><option value="1">real time</option>
+          <option value="3" selected>3×</option><option value="8">8×</option>
+        </select>
+        <button id="replay">↻ Replay</button>
+        <span class="note" id="launchnote"></span>
+      </div>
+    </div>
+  </details>
+
+  <div class="banner" id="banner" hidden>
+    <span class="x">✕</span>
+    <div>
+      <code id="b-test"></code>
+      <div class="sub" id="b-sub"></div>
+    </div>
+  </div>
+
+  <div class="grid">
+    <div class="col">
+      <div class="card">
+        <h3>Hypothesis tree <span class="tag" id="treetag">–</span></h3>
+        <div class="treewrap"><svg class="tree" id="tree" viewBox="0 0 800 300" xmlns="http://www.w3.org/2000/svg"
+             preserveAspectRatio="xMidYMin meet"></svg></div>
+        <div class="legend">
+          <span><i style="background:var(--amber)"></i>open</span>
+          <span><i style="background:var(--accent)"></i>investigating</span>
+          <span><i style="background:var(--grey)"></i>eliminated / unreachable</span>
+          <span><i style="background:var(--red)"></i>confirmed</span>
+          <span class="right" id="entropy"></span>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Bisection <span class="tag" id="bistag">range unknown</span></h3>
+        <div class="body">
+          <div class="striplbl"><span id="s-left">last known good</span><span id="s-right">HEAD</span></div>
+          <div class="strip" id="strip"></div>
+          <div class="rangebar"><i id="rangebar" style="width:100%;margin-left:0"></i></div>
+          <div class="probemsg" id="probemsg">waiting for orchestrator…</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Next-action policy <span class="tag" id="poltag">expected information gain ÷ estimated cost</span></h3>
+        <div class="body policy" id="policy"><div class="muted">no decision yet</div></div>
+      </div>
+    </div>
+
+    <div class="col">
+      <div class="card">
+        <h3>Agent activity <span class="tag" id="feedtag">–</span></h3>
+        <div class="feed" id="feed"></div>
+      </div>
+      <div class="card">
+        <h3>Budget <span class="tag" id="budtag"></span></h3>
+        <div class="body budget" id="budget">
+          <div class="meter"><span>probes</span><div class="bar"><i id="bud-probes"></i></div><b id="bud-probes-t">0</b></div>
+          <div class="meter"><span>time</span><div class="bar"><i id="bud-time"></i></div><b id="bud-time-t">0s</b></div>
+          <div class="meter"><span>LLM calls</span><div class="bar"><i id="bud-llm"></i></div><b id="bud-llm-t">0</b></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card report" id="report">
+    <h3>Root-cause report <span class="tag" id="reptag"></span></h3>
+    <div class="body" id="repbody"></div>
+  </div>
+</div>
+<script src="/static/app.js"></script>
+</body>
+</html>
