@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import json
 import random
+import re
 import threading
 import time
 from pathlib import Path
@@ -52,10 +53,11 @@ class LLM:
         from google.genai import errors, types
 
         prompt = redact(prompt)
-        models = [self.model] if self.model else list(self.models)
-        last_err = ""
-        for model in models:
-            for attempt in range(4):
+        queue = ([self.model] if self.model else []) + [m for m in self.models if m != self.model]
+        queue = [m for m in queue if m not in EXHAUSTED]
+        last_err = "" if queue else "every configured Gemini model is out of quota for today"
+        for model in queue:
+            for attempt in range(3):
                 try:
                     t0 = time.time()
                     resp = self.client.models.generate_content(
@@ -77,16 +79,21 @@ class LLM:
                     return data
                 except errors.APIError as e:
                     last_err = f"{e.code} {e.status}: {e.message}"
+                    wait = _retry_after(e.message or "")
+                    if e.code == 429 and (wait is None or wait > 60):
+                        EXHAUSTED.add(model)   # daily / long quota: skip this model for the rest of the process
+                        if self.bus:
+                            self.bus.emit("llm.quota", model=model, error=last_err[:200])
+                        break
                     if e.code in (429, 500, 502, 503, 504):
-                        time.sleep(min(30, 2 ** attempt + random.random()))
+                        time.sleep(min(30, wait if wait is not None else 2 ** attempt + random.random()))
                         continue
                     break   # 400/403/404: try the next model in the list
                 except Exception as e:  # network etc.
                     last_err = repr(e)
                     time.sleep(1 + attempt)
-            if self.model:  # a previously working model failed: re-open the fallback list
+            if self.model == model:   # the model we were using failed: fall through to the next one
                 self.model = None
-                models = [m for m in self.models if m != model]
         self.failures += 1
         self._log(n, role, "-", system, prompt, f"ERROR: {last_err}", 0)
         if self.bus:
@@ -99,6 +106,18 @@ class LLM:
         (self.log_dir / f"{n:03d}-{role}.json").write_text(json.dumps(
             {"role": role, "model": model, "seconds": round(secs, 2), "system": system, "prompt": prompt,
              "response": out}, indent=1))
+
+
+EXHAUSTED: set[str] = set()   # models whose quota ran out, shared by every investigation in this process
+_RETRY = re.compile(r"retry in (?:(\d+)h)?(?:(\d+)m)?([\d.]+)s", re.I)
+
+
+def _retry_after(message: str) -> float | None:
+    m = _RETRY.search(message)
+    if not m:
+        return None
+    h, mi, s = m.group(1), m.group(2), m.group(3)
+    return int(h or 0) * 3600 + int(mi or 0) * 60 + float(s)
 
 
 def _loads(text: str) -> Any:

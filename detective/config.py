@@ -29,10 +29,9 @@ class Budget:
 
 @dataclass(frozen=True)
 class Settings:
-    # Outside ~/Desktop and ~/Documents on purpose: those are privacy-protected on macOS and Docker's
-    # bind mounts of probe workspaces would block on a permission prompt.
+    # Investigations, evidence, caches and sandbox workspaces live in the repo under .rd/ (gitignored).
     home: Path = field(default_factory=lambda: Path(os.environ.get(
-        "RD_HOME", "~/.regression-detective")).expanduser().resolve())
+        "RD_HOME", str(Path(__file__).resolve().parents[1] / ".rd"))).expanduser().resolve())
     gemini_api_key: str = field(default_factory=lambda: os.environ.get("GEMINI_API_KEY", "")
                                 or os.environ.get("GOOGLE_API_KEY", ""))
     gemini_models: tuple[str, ...] = field(default_factory=lambda: tuple(_env_list(
@@ -40,9 +39,6 @@ class Settings:
     gemini_embed_model: str = field(default_factory=lambda: os.environ.get(
         "GEMINI_EMBED_MODEL", "gemini-embedding-001"))
     github_token: str = field(default_factory=lambda: os.environ.get("GITHUB_TOKEN", ""))
-    sandbox: str = field(default_factory=lambda: os.environ.get("RD_SANDBOX", "docker"))
-    allow_unsafe_local: bool = field(default_factory=lambda: os.environ.get(
-        "RD_ALLOW_UNSAFE_LOCAL", "") == "1")
     python_version: str = field(default_factory=lambda: os.environ.get("RD_PYTHON", "3.12"))
 
     offline: bool = False            # never call an LLM, even if a key is present
@@ -53,8 +49,6 @@ class Settings:
     max_parallel: int = 2
     probe_timeout_s: int = 120       # hard wall clock per sandboxed test run
     build_timeout_s: int = 600
-    mem_limit: str = "1g"
-    cpus: float = 2.0
     open_pr: bool = False
     budget: Budget = field(default_factory=Budget)
 

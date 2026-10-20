@@ -153,7 +153,7 @@ def run_investigation(params: Params, settings: Settings | None = None, echo=Non
     inv = Investigation(id=inv_id, repo_path=repo.path, test_id=params.test, repo_url=repo_url)
     bus.emit("investigation.started", id=inv_id, repo=repo_url or str(repo.path), test=params.test,
              label=params.label, last_good=params.last_good, head=params.head,
-             config={"llm": llm.describe(), "sandbox": settings.sandbox, "flaky_runs": settings.flaky_runs,
+             config={"llm": llm.describe(), "sandbox": "local", "flaky_runs": settings.flaky_runs,
                      "max_probes": settings.budget.max_probes, "threshold": settings.confidence_threshold,
                      "history_index": settings.use_history_index, "forge": forge.name})
     try:

@@ -1,0 +1,42 @@
+{
+ "summary": {
+  "mode": "offline",
+  "history_index": true,
+  "cases": 1,
+  "accuracy": 1.0,
+  "false_confidence_rate": 0.0,
+  "wrong_culprit_named": 0,
+  "mean_seconds": 4.4,
+  "probe_efficiency": [
+   "c5_stale_test: 3/4"
+  ]
+ },
+ "rows": [
+  {
+   "correct": true,
+   "checks": {
+    "status": true,
+    "culprits": true,
+    "classification": true
+   },
+   "confidence": 0.985,
+   "false_confidence": false,
+   "named_wrong_culprit": false,
+   "bisection_probes": 3,
+   "log2_min": 4,
+   "probes_total": 4,
+   "seconds": 4.4,
+   "llm_calls": 0,
+   "status": "resolved",
+   "culprits": [
+    "3dab4ac"
+   ],
+   "classification": "stale_test",
+   "case": "c5_stale_test",
+   "title": "Intentional behaviour change; the test is stale",
+   "expect": "resolved",
+   "wall": 4.4,
+   "investigation": "eval-c5_stale_test-135906"
+  }
+ ]
+}

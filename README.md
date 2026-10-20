@@ -4,7 +4,7 @@
 
 Give it a repository and one failing test. It proposes competing explanations (bad commit, flaky test,
 dependency release, CI environment change, external fixture change) and then *runs experiments* to tell them
-apart. It checks out historical commits in a sandboxed container, installs their dependencies and runs the
+apart. It checks out historical commits into a sandboxed throwaway workspace, installs their dependencies and runs the
 test. Each result updates a Bayesian hypothesis tree and decides the next experiment. When the evidence
 converges, it confirms the culprit with a counterfactual (revert it at HEAD and show that the test passes),
 explains the mechanism with retrieval over the repository's code, docs and PR history, and validates a
@@ -16,14 +16,14 @@ triage → hypothesize → orchestrate ⇄ dispatch (flakiness · bisection · d
                            └→ explain → patch ⟲ → verify → report + draft PR
 ```
 
-On the 8-case ground-truth corpus it gets **8/8 correct with a 0% false-confidence rate**, at ~8 s per
-investigation (see [docs/test-report.md](docs/test-report.md)).
+On the 8-case ground-truth corpus it gets **8/8 correct with a 0% false-confidence rate**, both with live
+Gemini (~100 s per investigation) and offline (~8 s) (see [docs/test-report.md](docs/test-report.md)).
 
 ---
 
 ## Quick start
 
-Requirements: Python ≥ 3.10, git, Docker (Docker Desktop on macOS).
+Requirements: Python ≥ 3.10 and git. Nothing else — no Docker.
 
 ```bash
 python3.12 -m venv .venv && source .venv/bin/activate
@@ -86,9 +86,9 @@ are in [detective/agents/prompts.py](detective/agents/prompts.py). Every call is
 | Evidence Verifier (§4.9) | [agents/verifier.py](detective/agents/verifier.py) |
 | LangGraph control loop (§5) | [graph.py](detective/graph.py) |
 | RAG, 4 corpora, hybrid BM25 + dense + RRF (§6) | [rag/](detective/rag) |
-| Tools: git, GitHub, Docker, pytest JSON, PyPI, AST (§7) | [tools/](detective/tools), [sandbox/](detective/sandbox) |
+| Tools: git, GitHub, process sandbox, pytest JSON, PyPI, AST (§7) | [tools/](detective/tools), [sandbox/](detective/sandbox) |
 | Visual search interface (§8) | [server/app.py](detective/server/app.py), [ui/](ui) |
-| Safety (§9) | [sandbox/docker_sandbox.py](detective/sandbox/docker_sandbox.py), [tools/forge.py](detective/tools/forge.py), [redact.py](detective/redact.py), verifier |
+| Safety (§9) | [sandbox/local_sandbox.py](detective/sandbox/local_sandbox.py), [tools/forge.py](detective/tools/forge.py), [redact.py](detective/redact.py), verifier |
 | Test plan (§10) | [eval/](eval), [tests/](tests) |
 
 Architecture details, likelihood models and the policy maths are in [docs/architecture.md](docs/architecture.md).
@@ -117,11 +117,12 @@ Architecture details, likelihood models and the policy maths are in [docs/archit
 
 ## Safety
 
-- **Execution:** each probe runs in a fresh container with `network=none`, a read-only root filesystem,
-  the source mounted read-only, `cap_drop=ALL`, `no-new-privileges`, uid 65534, memory, CPU and PID caps, and
-  a hard wall-clock timeout. The container is destroyed afterwards. Dependency installation is the only phase
-  with network access, and its build context contains only manifests, never repository code. `setup.py` is
-  parsed statically and never executed on the host.
+- **Execution:** each probe runs as a fresh subprocess on a throwaway `git archive` export in the system temp
+  directory, with a scrubbed environment (no host variables or tokens), HTTP(S) proxies pointed at a dead port,
+  its own process group (killed as a whole on the hard timeout), and CPU / file-size / open-file rlimits.
+  Dependencies are installed once per requirement set into a cached virtualenv, from manifests only;
+  `setup.py` is parsed statically and never executed. This is process-level containment, not a VM: raw
+  sockets and reads of world-readable files are still possible, so only investigate repositories you trust.
 - **Repository:** the investigated repo is only ever read; probes run on `git archive` exports. The agent
   can push only `regression-detective/*` branches (no force, never the default branch) and opens only
   *draft* PRs, which require `--open-pr`, a `GITHUB_TOKEN`, and a verifier pass above the confidence threshold.
@@ -137,21 +138,22 @@ Architecture details, likelihood models and the policy maths are in [docs/archit
 detective/
   agents/      orchestrator + 8 specialists, prompts and schemas
   tools/       git, forge (GitHub REST / local export), PyPI registry, pytest report, AST
-  sandbox/     Docker sandbox (and an opt-in unsafe local fallback), dependency discovery, in-container runner
+  sandbox/     process sandbox (cached virtualenvs), dependency discovery, the runner each probe executes
   rag/         corpora (code / docs / history / CI archive), BM25 + dense + RRF
   belief.py    hypothesis tree as a distribution;  policy.py  likelihoods, EIG/cost, action selection
   graph.py     LangGraph wiring;  report.py  report + PR body;  server/  FastAPI + SSE
 ui/            live investigation UI (vanilla JS, no build step)
 eval/          ground-truth corpus builder and scorer;  results/  latest scored runs
-tests/         unit tests, fake-Gemini end-to-end test, Docker end-to-end tests
+tests/         unit tests, fake-Gemini end-to-end test, full end-to-end investigations
 demo/          scripted storyboard (offline fallback)
+.rd/           all run data: investigations, evidence, LLM logs, venv cache (gitignored)
 docs/          architecture and test report
 ```
 
 ## Limitations
 
-- **Gemini path:** tested end to end with a fake client that returns schema-valid JSON, not yet against the
-  live API. The first real run may need prompt tuning.
+- **Gemini free tier:** 20 requests per model per day; a full 8-case eval needs ~40, so it leans on the model
+  fallback list.
 - **Eval corpus:** all eight cases are synthetic, so ground truth is known by construction. Mining historical
   open-source regression/fix pairs is the next step (§10).
 - **GitHub forge:** written against the REST API but not yet exercised against a live repository.

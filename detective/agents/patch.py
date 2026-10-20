@@ -6,6 +6,7 @@ edge). Output is a draft PR proposal — never a merge.
 from __future__ import annotations
 
 import difflib
+import re
 import json
 import shutil
 import tempfile
@@ -143,11 +144,20 @@ def _propose(ctx: Ctx, inv: Investigation, expl: dict, prev: list) -> tuple[dict
     if expl.get("classification") == "stale_test":
         sym = inv.symptom
         src = contents.get(test_path, "")
-        if sym.get("expected") and sym.get("observed") and src.count(sym["expected"]) == 1:
-            return ({test_path: src.replace(sym["expected"], sym["observed"], 1)},
+        exp_n, obs_n = _num(sym.get("expected")), _num(sym.get("observed"))
+        if exp_n and obs_n and len(re.findall(rf"(?<![\d.]){re.escape(exp_n)}(?![\d])", src)) == 1:
+            new = re.sub(rf"(?<![\d.]){re.escape(exp_n)}(?![\d])", obs_n, src, count=1)
+            return ({test_path: new},
                     "mechanical expectation update to the new intended behaviour — review required", "test",
                     "fallback: update expected value")
+        inv.patch_attempts = ctx.settings.budget.max_patch_attempts   # never revert an intended change
+        return {}, "stale test, but the expectation could not be located for a mechanical update", "test", "none"
     return _revert_edits(ctx, inv, culprits) + ("fallback: revert culprit",)
+
+
+def _num(text: str | None) -> str | None:
+    found = re.findall(r"-?\d+(?:\.\d+)?", text or "")
+    return found[0] if len(found) == 1 else None
 
 
 def _revert_edits(ctx: Ctx, inv: Investigation, culprits) -> tuple[dict, str, str]:

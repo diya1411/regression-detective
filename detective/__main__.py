@@ -117,7 +117,7 @@ def main(argv: list[str] | None = None) -> int:
 
     settings = _settings(a)
     print(f"Regression Detective · LLM {'on (' + settings.gemini_models[0] + ')' if settings.llm_enabled else 'off'}"
-          f" · sandbox {settings.sandbox} · home {settings.home}", flush=True)
+          f" · home {settings.home}", flush=True)
     result = run_investigation(Params(repo=a.repo, test=a.test, last_good=a.last_good, head=a.head, meta=a.meta,
                                       mirror=a.mirror), settings, echo=None if a.json else _echo)
     r = result.report or {}

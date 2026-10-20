@@ -1,11 +1,7 @@
-"""End-to-end: build a fixture repo and run a full offline investigation in the Docker sandbox."""
+"""End-to-end: build a fixture repo and run a full offline investigation in the (local) sandbox."""
 import json
 
 import pytest
-
-from detective.sandbox.docker_sandbox import docker_available
-
-pytestmark = pytest.mark.skipif(not docker_available(), reason="Docker is not running")
 
 
 @pytest.mark.parametrize("case,expect", [("c1_single_defect", "resolved"), ("c2_flaky", "flaky")])

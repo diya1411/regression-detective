@@ -6,6 +6,7 @@ The only writes the agent ever performs happen in a separate clone made for a dr
 from __future__ import annotations
 
 import io
+import os
 import re
 import subprocess
 import tarfile
@@ -162,10 +163,12 @@ def apply_patch(tree: Path, patch: bytes, reverse: bool = False) -> tuple[bool, 
     args = ["git", "apply", "--whitespace=nowarn"]
     if reverse:
         args.append("-R")
-    proc = subprocess.run(args, cwd=tree, input=patch, capture_output=True, timeout=60)
+    # Without a ceiling, git would discover an enclosing repository and silently skip "outside" paths.
+    env = {**os.environ, "GIT_CEILING_DIRECTORIES": str(Path(tree).resolve().parent)}
+    proc = subprocess.run(args, cwd=tree, input=patch, capture_output=True, timeout=60, env=env)
     if proc.returncode != 0:
         # later commits may have shifted the surrounding lines: retry with one line of context
-        proc2 = subprocess.run(args + ["-C1"], cwd=tree, input=patch, capture_output=True, timeout=60)
+        proc2 = subprocess.run(args + ["-C1"], cwd=tree, input=patch, capture_output=True, timeout=60, env=env)
         if proc2.returncode == 0:
             return True, "applied with reduced context (-C1)"
     ok = proc.returncode == 0

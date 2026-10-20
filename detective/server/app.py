@@ -56,10 +56,8 @@ def index():
 @app.get("/api/status")
 def status():
     s = settings()
-    from ..sandbox.docker_sandbox import docker_available
-
-    return {"llm": {"enabled": s.llm_enabled, "models": list(s.gemini_models)},
-            "docker": docker_available(), "sandbox": s.sandbox, "home": str(s.home)}
+    return {"llm": {"enabled": s.llm_enabled, "models": list(s.gemini_models)}, "sandbox": "local",
+            "home": str(s.home)}
 
 
 @app.get("/api/fixtures")

@@ -48,7 +48,7 @@ Every node is wrapped so that an exception routes to `report` with `status=error
  ┌─► Orchestrator  (owns the belief, the budget and the policy; never touches a tool)
  │      │ dispatch (1–2 actions in parallel)
  │      ▼
- │   Flakiness · Bisection · Dependency · Environment ──► Docker sandbox / PyPI / git / CI / AST
+ │   Flakiness · Bisection · Dependency · Environment ──► process sandbox / PyPI / git / CI / AST
  │      │ evidence (EvidenceLog ids)
  └──────┘
         │ conclusion (confirmed, budget exhausted, or no informative action left)

@@ -502,8 +502,8 @@
   api("/api/status").then(function (s) {
     $("llmpill").textContent = s.llm.enabled ? "Gemini · " + s.llm.models[0] : "LLM off (no key)";
     $("llmpill").className = "pill " + (s.llm.enabled ? "on" : "");
-    $("sbpill").textContent = "sandbox " + s.sandbox + (s.docker ? " ✓" : " ✗");
-    $("sbpill").className = "pill " + (s.docker ? "done" : "bad");
+    $("sbpill").textContent = "sandbox " + s.sandbox;
+    $("sbpill").className = "pill done";
   }).catch(function () {});
   S = fresh();
   loadFixtures(); loadPast();

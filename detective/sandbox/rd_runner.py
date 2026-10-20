@@ -40,7 +40,7 @@ def main():
     results = []
     for i in range(int(cfg.get("repeat", 1))):
         rep = os.path.join(tmp, f"rd-report-{os.getpid()}-{i}.json")
-        args = [sys.executable, "-m", "pytest", "-p", "no:cacheprovider", "-q", "--no-header",
+        args = [sys.executable, "-m", "pytest", "-p", "no:cacheprovider", "-q", "--no-header", f"--rootdir={workdir}",
                 "--json-report", f"--json-report-file={rep}",
                 "--json-report-omit", "keywords", "streams", "log", "warnings", "traceback"]
         args += cfg.get("tests") or []

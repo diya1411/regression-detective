@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 import shutil
+import tempfile
 import threading
 import time
 import uuid
@@ -82,7 +83,9 @@ class Sandbox:
         self._spec_cache: dict[str, DepSpec] = {}
         self._locks: dict[str, threading.Lock] = {}
         self._lock = threading.Lock()
-        self.trees_dir = settings.work_dir / "trees"
+        # Throwaway probe workspaces live in the system temp dir, never inside a git repository:
+        # git and pytest both search parent directories and would pick up the enclosing project.
+        self.trees_dir = Path(tempfile.gettempdir()) / "regression-detective-probes"
         self.trees_dir.mkdir(parents=True, exist_ok=True)
         (settings.cache_dir / "deps").mkdir(parents=True, exist_ok=True)
 

@@ -7,12 +7,6 @@ import hashlib
 import json
 from types import SimpleNamespace
 
-import pytest
-
-from detective.sandbox.docker_sandbox import docker_available
-
-pytestmark = pytest.mark.skipif(not docker_available(), reason="Docker is not running")
-
 CACHE_BLOCK = ("    if item.sku not in _line_cache:\n        _line_cache[item.sku] = item.unit_price * item.qty\n"
                "    return _line_cache[item.sku]")
 FIXED = ("    key = (item.sku, item.unit_price, item.qty)\n    if key not in _line_cache:\n"

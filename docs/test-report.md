@@ -7,7 +7,7 @@ but realistic `checkout-service` repository for each scenario in the design's te
 a defect, or a deliberate non-defect, injected at a known commit, plus an exported CI history, a PR/issue
 history and a CI failure archive. The builder is deterministic (fixed authors, dates and content), so the
 commit SHAs are identical on every machine. [eval/run_eval.py](../eval/run_eval.py) runs the full agent on
-each case in the Docker sandbox and scores the report against `truth.json`. No judgement is involved.
+each case in the process sandbox and scores the report against `truth.json`. No judgement is involved.
 
 ```bash
 python -m eval.build_fixtures
@@ -58,6 +58,32 @@ patching). The Gemini code path is covered by `tests/test_llm_e2e.py` with a fak
 - Unconfirmed conclusions are capped at 0.6 confidence by design, which is why case 8 sits below the 0.7
   threshold and its patch would be suppressed.
 
+## Results with Gemini (live API)
+
+`python -m eval.run_eval --tag gemini` — same corpus, LLM on (`gemini-3.8-flash` → `3.7-flash` → `3.5-flash` as
+daily quotas ran out), local process sandbox:
+
+| # | case | got | culprit(s) | classification (Gemini) | patch | confidence | time |
+|---|---|---|---|---|---|---|---|
+| 1 | single defect | resolved | c9f0b0d | defect | Gemini code fix, validated | 0.979 | 128 s |
+| 2 | flaky | flaky | – | – | – | 0.970 | 78 s |
+| 3 | dependency release | dependency | – | dependency change | pin, validated | 0.970 | 49 s |
+| 4 | unbuildable neighbours | resolved | 21c4b37 | defect | Gemini code fix, validated | 0.975 | 147 s |
+| 5 | stale test | resolved | 3dab4ac | stale test | see note | 0.975 | 145 s |
+| 6 | two defects | multi-cause | a3731b5, 11c403c | defect | Gemini code fix, validated | 0.986 | 114 s |
+| 7 | window invalid | window invalid | – | – | – | 0.940 | 82 s |
+| 8 | budget exhausted | budget exhausted | – | – | – | 0.600 | 74 s |
+
+**8/8 correct, false-confidence rate 0%, 0 unsupported claims.** Gemini wrote every explanation and the
+code fixes for cases 1, 4 and 6 (for example, keying the line-total cache by `(sku, price, qty)` instead of
+reverting the cache). Wall-clock is dominated by LLM latency (~102 s mean vs ~8 s offline).
+
+Note on case 5: Gemini classified it correctly as a stale test, but the free-tier daily quota (20 requests per
+model per day) ran out at the patch step. The fallback in that run reverted the code, which is the wrong fix
+for an intentional change. It has since been fixed: the fallback now updates the test's expected value
+(`121.01 → 121.00`, validated) and never reverts a change classified as intended. Exhausted models are now
+skipped immediately rather than retried.
+
 ## RAG ablation (retrieval point one)
 
 The same corpus with `--no-history` also scores 8/8, so correctness does not depend on the history index.
@@ -91,7 +117,7 @@ cost.
 
 ## Unit and integration tests
 
-`pytest`: 25 tests, all passing.
+`pytest`: 26 tests, all passing.
 
 - `test_belief_policy.py`: entropy, Bayes updates, EIG of a midpoint probe (≈ P(H1) bits), relevance-weighted
   midpoint, confirmation required before *confirmed*, flakiness check before bisection, mass conservation on
@@ -100,15 +126,16 @@ cost.
   external-I/O scan, identifier tokenisation, BM25 exact-symbol ranking, RRF with corpus filters, static
   dependency discovery (`setup.py` read but never run, `-r` includes, pins), redaction, pytest-report parsing,
   symptom parsing, negation-aware intent detection.
-- `test_llm.py`: Gemini wrapper model fallback on 404, schema passed as `response_json_schema`, redaction
+- `test_llm.py`: Gemini wrapper model fallback on 404 and on exhausted daily quota (no waiting), schema passed as `response_json_schema`, redaction
   before sending, call budget, lenient JSON parsing.
 - `test_llm_e2e.py`: a complete investigation with the LLM path **on**, using a fake Gemini client. The patch
-  is the LLM's search/replace edit, validated in Docker. A claim citing a non-existent evidence id is rejected,
+  is the LLM's search/replace edit, validated in the sandbox. A claim citing a non-existent evidence id is rejected,
   and an author-marked inference is never upgraded to supported.
-- `test_e2e.py`: complete offline investigations (cases 1 and 2) in the Docker sandbox.
+- `test_e2e.py`: complete offline investigations (cases 1 and 2) in the process sandbox.
 
 ## Known gaps
 
 - The corpus is synthetic. Historical regression/fix pairs from real open-source repositories are the
   planned next addition.
-- No measurements yet against the live Gemini API; with a key, run `python -m eval.run_eval --tag gemini`.
+- A full Gemini eval uses ~40 LLM calls; on the free tier (20 requests/model/day) spread it over the
+  model fallback list or run a subset with `--only`.

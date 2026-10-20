@@ -63,3 +63,27 @@ def test_lenient_json():
     assert _loads('```json\n{"x": 2}\n```') == {"x": 2}
     assert _loads('noise {"y": 3} trailing') == {"y": 3}
     assert _loads("not json") is None
+
+
+def test_daily_quota_skips_model_without_waiting():
+    import time
+
+    from google.genai import errors
+
+    from detective import llm as llm_mod
+
+    llm_mod.EXHAUSTED.clear()
+
+    def responder(model, contents, config):
+        if model == "m-a":
+            raise errors.ClientError(429, {"error": {"code": 429, "status": "RESOURCE_EXHAUSTED",
+                                                     "message": "Quota exceeded. Please retry in 15h38m6.8s."}})
+        return SimpleNamespace(text='{"ok": true}', usage_metadata=None)
+
+    llm, calls = make_llm(responder, models=("m-a", "m-b"))
+    t0 = time.time()
+    assert llm.json("t", "s", "p", {"type": "object"}) == {"ok": True}
+    assert time.time() - t0 < 1 and calls == ["m-a", "m-b"]
+    assert llm.json("t", "s", "p", {"type": "object"}) == {"ok": True}
+    assert calls[-1] == "m-b" and "m-a" in llm_mod.EXHAUSTED   # exhausted model is not retried
+    llm_mod.EXHAUSTED.clear()

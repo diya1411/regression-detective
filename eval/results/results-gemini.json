@@ -1,0 +1,219 @@
+{
+ "summary": {
+  "mode": "gemini",
+  "history_index": true,
+  "cases": 8,
+  "accuracy": 1.0,
+  "false_confidence_rate": 0.0,
+  "wrong_culprit_named": 0,
+  "mean_seconds": 102.3,
+  "probe_efficiency": [
+   "c1_single_defect: 4/5",
+   "c4_unbuildable: 3/4",
+   "c5_stale_test: 3/4",
+   "c6_multi_cause: 7/5"
+  ]
+ },
+ "rows": [
+  {
+   "correct": true,
+   "checks": {
+    "status": true,
+    "culprits": true,
+    "classification": true,
+    "probes<=max": true
+   },
+   "confidence": 0.979,
+   "false_confidence": false,
+   "named_wrong_culprit": false,
+   "bisection_probes": 4,
+   "log2_min": 5,
+   "probes_total": 5,
+   "seconds": 128.2,
+   "llm_calls": 5,
+   "status": "resolved",
+   "culprits": [
+    "c9f0b0d"
+   ],
+   "classification": "defect",
+   "case": "c1_single_defect",
+   "title": "Single defect commit, clean 32-commit range",
+   "expect": "resolved",
+   "wall": 128.3,
+   "investigation": "eval-c1_single_defect-134350"
+  },
+  {
+   "correct": true,
+   "checks": {
+    "status": true,
+    "no_bisection": true
+   },
+   "confidence": 0.97,
+   "false_confidence": false,
+   "named_wrong_culprit": false,
+   "bisection_probes": 0,
+   "log2_min": 4,
+   "probes_total": 0,
+   "seconds": 78.0,
+   "llm_calls": 4,
+   "status": "flaky",
+   "culprits": [],
+   "classification": "flaky",
+   "case": "c2_flaky",
+   "title": "Genuinely flaky test, no real regression",
+   "expect": "flaky",
+   "wall": 78.0,
+   "investigation": "eval-c2_flaky-134558"
+  },
+  {
+   "correct": true,
+   "checks": {
+    "status": true,
+    "package": true,
+    "H1_eliminated": true,
+    "no_culprit": true
+   },
+   "confidence": 0.97,
+   "false_confidence": false,
+   "named_wrong_culprit": false,
+   "bisection_probes": 0,
+   "log2_min": 4,
+   "probes_total": 1,
+   "seconds": 49.4,
+   "llm_calls": 3,
+   "status": "dependency",
+   "culprits": [],
+   "classification": "dependency_change",
+   "case": "c3_dependency",
+   "title": "Dependency minor release breaks the test; repository code unchanged",
+   "expect": "dependency",
+   "wall": 49.4,
+   "investigation": "eval-c3_dependency-134716"
+  },
+  {
+   "correct": true,
+   "checks": {
+    "status": true,
+    "culprits": true,
+    "classification": true
+   },
+   "confidence": 0.975,
+   "false_confidence": false,
+   "named_wrong_culprit": false,
+   "bisection_probes": 3,
+   "log2_min": 4,
+   "probes_total": 6,
+   "seconds": 147.0,
+   "llm_calls": 5,
+   "status": "resolved",
+   "culprits": [
+    "21c4b37"
+   ],
+   "classification": "defect",
+   "case": "c4_unbuildable",
+   "title": "Defect commit adjacent to two commits that fail to build",
+   "expect": "resolved",
+   "wall": 147.1,
+   "investigation": "eval-c4_unbuildable-134806"
+  },
+  {
+   "correct": true,
+   "checks": {
+    "status": true,
+    "culprits": true,
+    "classification": true
+   },
+   "confidence": 0.975,
+   "false_confidence": false,
+   "named_wrong_culprit": false,
+   "bisection_probes": 3,
+   "log2_min": 4,
+   "probes_total": 4,
+   "seconds": 144.9,
+   "llm_calls": 5,
+   "status": "resolved",
+   "culprits": [
+    "3dab4ac"
+   ],
+   "classification": "stale_test",
+   "case": "c5_stale_test",
+   "title": "Intentional behaviour change; the test is stale",
+   "expect": "resolved",
+   "wall": 144.9,
+   "investigation": "eval-c5_stale_test-135033"
+  },
+  {
+   "correct": true,
+   "checks": {
+    "status": true,
+    "culprits": true
+   },
+   "confidence": 0.986,
+   "false_confidence": false,
+   "named_wrong_culprit": false,
+   "bisection_probes": 7,
+   "log2_min": 5,
+   "probes_total": 9,
+   "seconds": 114.4,
+   "llm_calls": 5,
+   "status": "multi_cause",
+   "culprits": [
+    "a3731b5",
+    "11c403c"
+   ],
+   "classification": "defect",
+   "case": "c6_multi_cause",
+   "title": "Two independent defects in the range",
+   "expect": "multi_cause",
+   "wall": 114.4,
+   "investigation": "eval-c6_multi_cause-135258"
+  },
+  {
+   "correct": true,
+   "checks": {
+    "status": true,
+    "no_culprit": true
+   },
+   "confidence": 0.94,
+   "false_confidence": false,
+   "named_wrong_culprit": false,
+   "bisection_probes": 0,
+   "log2_min": 4,
+   "probes_total": 3,
+   "seconds": 82.2,
+   "llm_calls": 2,
+   "status": "window_invalid",
+   "culprits": [],
+   "classification": "window_invalid",
+   "case": "c7_window_invalid",
+   "title": "Culprit outside the search window (bad last-good assumption)",
+   "expect": "window_invalid",
+   "wall": 82.2,
+   "investigation": "eval-c7_window_invalid-135452"
+  },
+  {
+   "correct": true,
+   "checks": {
+    "status": true,
+    "no_culprit": true,
+    "truth_in_range": true
+   },
+   "confidence": 0.6,
+   "false_confidence": false,
+   "named_wrong_culprit": false,
+   "bisection_probes": 3,
+   "log2_min": 6,
+   "probes_total": 3,
+   "seconds": 74.3,
+   "llm_calls": 2,
+   "status": "budget_exhausted",
+   "culprits": [],
+   "classification": "unclear",
+   "case": "c8_budget",
+   "title": "Budget exhausted mid-bisection",
+   "expect": "budget_exhausted",
+   "wall": 74.3,
+   "investigation": "eval-c8_budget-135614"
+  }
+ ]
+}
