@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>Regression Detective architecture</title>
+<style>
+body{margin:0;background:#fff;font-family:-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+svg{display:block}
+.box{fill:#f4f2ff;stroke:#6d5cf5;stroke-width:1.6}
+.spec{fill:#fff7ea;stroke:#b8791a;stroke-width:1.4}
+.tool{fill:#eef7f3;stroke:#12885f;stroke-width:1.3}
+.rag{fill:#f3f4f7;stroke:#8a90a0;stroke-width:1.3}
+.out{fill:#fdeef0;stroke:#cc3344;stroke-width:1.6}
+.t{font-size:15px;font-weight:650;fill:#14161c}
+.s{font-size:11.5px;fill:#5a6070}
+.e{stroke:#9aa0ae;stroke-width:1.6;fill:none;marker-end:url(#a)}
+.fb{stroke:#6d5cf5;stroke-width:2;fill:none;marker-end:url(#ap);stroke-dasharray:6 4}
+.lbl{font-size:11px;fill:#6d5cf5;font-weight:600}
+.h{font-size:12px;font-weight:700;fill:#9aa0ae;letter-spacing:.08em}
+</style></head><body>
+<svg width="1500" height="960" viewBox="0 0 1500 960" xmlns="http://www.w3.org/2000/svg">
+<defs>
+ <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#9aa0ae"/></marker>
+ <marker id="ap" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#6d5cf5"/></marker>
+</defs>
+<text x="40" y="44" style="font-size:24px;font-weight:700;fill:#14161c">Regression Detective — agent architecture</text>
+<text x="40" y="68" class="s" style="font-size:13px">LangGraph state machine · one orchestrator, nine specialist agents · every tool observation logged as evidence (E1, E2, …)</text>
+
+<!-- input -->
+<rect x="40" y="100" width="230" height="64" rx="10" class="out"/>
+<text x="56" y="126" class="t">Failing CI test</text>
+<text x="56" y="146" class="s">repo + pytest node id (+ last-good)</text>
+
+<!-- triage / hypothesis -->
+<rect x="330" y="100" width="250" height="64" rx="10" class="box"/>
+<text x="346" y="126" class="t">Triage agent</text>
+<text x="346" y="146" class="s">symptom · search window · AST relevance</text>
+<rect x="640" y="100" width="260" height="64" rx="10" class="box"/>
+<text x="656" y="126" class="t">Hypothesis agent</text>
+<text x="656" y="146" class="s">5 hypotheses + priors + elimination criteria</text>
+<path d="M270 132 H326" class="e"/><path d="M580 132 H636" class="e"/>
+
+<!-- RAG -->
+<rect x="1000" y="92" width="460" height="196" rx="12" class="rag"/>
+<text x="1018" y="118" class="h">RAG · HYBRID BM25 + DENSE (GEMINI EMBEDDINGS) · RRF</text>
+<rect x="1018" y="132" width="200" height="60" rx="8" fill="#fff" stroke="#c9cdd6"/><text x="1030" y="156" class="t" style="font-size:13.5px">Code corpus</text><text x="1030" y="176" class="s">AST function/class chunks</text>
+<rect x="1240" y="132" width="200" height="60" rx="8" fill="#fff" stroke="#c9cdd6"/><text x="1252" y="156" class="t" style="font-size:13.5px">Docs corpus</text><text x="1252" y="176" class="s">README, design notes, ADRs</text>
+<rect x="1018" y="206" width="200" height="60" rx="8" fill="#fff" stroke="#c9cdd6"/><text x="1030" y="230" class="t" style="font-size:13.5px">History corpus</text><text x="1030" y="250" class="s">closed issues, merged PRs</text>
+<rect x="1240" y="206" width="200" height="60" rx="8" fill="#fff" stroke="#c9cdd6"/><text x="1252" y="230" class="t" style="font-size:13.5px">CI archive</text><text x="1252" y="250" class="s">past failures + resolution</text>
+<path d="M900 132 H996" class="e"/><text x="912" y="124" class="lbl">priors (RAG #1)</text>
+
+<!-- orchestrator -->
+<rect x="470" y="230" width="430" height="92" rx="12" class="box" style="stroke-width:2.4"/>
+<text x="490" y="260" class="t" style="font-size:17px">Investigation Orchestrator</text>
+<text x="490" y="282" class="s">owns the hypothesis tree (Bayesian belief over causes × commits)</text>
+<text x="490" y="300" class="s">picks next action by expected information gain ÷ estimated cost</text>
+<text x="490" y="316" class="s">dispatches 1–2 specialists in parallel · enforces budget · grows the tree</text>
+<path d="M770 164 V226" class="e"/>
+
+<!-- specialists -->
+<rect x="40" y="398" width="300" height="70" rx="10" class="spec"/><text x="56" y="424" class="t">Flakiness agent</text><text x="56" y="444" class="s">N runs at HEAD and at last-good</text><text x="56" y="459" class="s">verifies bisection's assumptions</text>
+<rect x="370" y="398" width="300" height="70" rx="10" class="spec"/><text x="386" y="424" class="t">Bisection agent</text><text x="386" y="444" class="s">weighted-midpoint probes · skip/repair</text><text x="386" y="459" class="s">counterfactual revert · window extension</text>
+<rect x="700" y="398" width="300" height="70" rx="10" class="spec"/><text x="716" y="424" class="t">Dependency agent</text><text x="716" y="444" class="s">lockfile diff · PyPI time-travel</text><text x="716" y="459" class="s">pin-and-rerun experiment</text>
+<rect x="1030" y="398" width="300" height="70" rx="10" class="spec"/><text x="1046" y="424" class="t">Environment agent</text><text x="1046" y="444" class="s">CI config / runner comparison</text><text x="1046" y="459" class="s">static scan for external fixtures</text>
+<path d="M600 322 L190 394" class="e"/><path d="M640 322 L520 394" class="e"/><path d="M730 322 L850 394" class="e"/><path d="M780 322 L1180 394" class="e"/>
+
+<!-- tools -->
+<rect x="40" y="510" width="1290" height="76" rx="12" class="tool"/>
+<text x="58" y="536" class="h" style="fill:#12885f">TOOLS (REAL, STATE-CHANGING)</text>
+<text x="58" y="566" class="t" style="font-size:14px">Process sandbox (checkout → install → pytest, fresh workspace per probe)  ·  Git  ·  pytest JSON report  ·  PyPI JSON API  ·  GitHub REST  ·  Python AST</text>
+<path d="M190 468 V506" class="e"/><path d="M520 468 V506" class="e"/><path d="M850 468 V506" class="e"/><path d="M1180 468 V506" class="e"/>
+
+<!-- feedback edge -->
+<path d="M1340 548 C1440 548, 1440 276, 904 276" class="fb"/>
+<text x="1010" y="334" class="lbl">evidence → Bayes update → re-plan</text>
+
+<!-- downstream -->
+<rect x="40" y="640" width="300" height="76" rx="10" class="box"/><text x="56" y="668" class="t">Explanation agent</text><text x="56" y="688" class="s">causal account · defect vs stale test</text><text x="56" y="704" class="s">claims cite evidence ids</text>
+<rect x="390" y="640" width="300" height="76" rx="10" class="box"/><text x="406" y="668" class="t">Patch agent</text><text x="406" y="688" class="s">minimal search/replace edit</text><text x="406" y="704" class="s">failing test + full suite vs baseline</text>
+<rect x="740" y="640" width="300" height="76" rx="10" class="box"/><text x="756" y="668" class="t">Evidence Verifier</text><text x="756" y="688" class="s">deterministic citation checks +</text><text x="756" y="704" class="s">adversarial Gemini audit · confidence</text>
+<rect x="1090" y="640" width="370" height="76" rx="10" class="out"/><text x="1106" y="668" class="t">Root-cause report + draft PR</text><text x="1106" y="688" class="s">culprit, mechanism, validated patch</text><text x="1106" y="704" class="s">patch suppressed below confidence threshold</text>
+<path d="M340 678 H386" class="e"/><path d="M690 678 H736" class="e"/><path d="M1040 678 H1086" class="e"/>
+<path d="M470 290 H18 V678 H36" class="e"/><text x="26" y="626" class="s" transform="rotate(-90 26 626)">conclusion</text>
+<path d="M540 716 C540 760, 460 760, 460 720" class="fb"/><text x="560" y="752" class="lbl">failed patch → retry with failure output</text>
+<path d="M1460 220 H1488 V614 H240 V636" class="e" style="stroke-dasharray:3 4"/><text x="900" y="608" class="lbl" style="fill:#8a90a0">retrieved context for the culprit (RAG #2)</text>
+
+<!-- llm + safety footer -->
+<rect x="40" y="800" width="640" height="120" rx="12" fill="#fafbfc" stroke="#e2e4ea"/>
+<text x="58" y="826" class="h">GEMINI (STRUCTURED JSON OUTPUT)</text>
+<text x="58" y="852" class="s" style="font-size:12.5px">Triage · Hypothesis · Explanation · Patch · Verifier — one system prompt and JSON schema per role</text>
+<text x="58" y="872" class="s" style="font-size:12.5px">model fallback list · call budget · credential redaction before every call</text>
+<text x="58" y="892" class="s" style="font-size:12.5px">deterministic fallbacks when no key / offline; decisions are computed, not delegated</text>
+<rect x="710" y="800" width="750" height="120" rx="12" fill="#fafbfc" stroke="#e2e4ea"/>
+<text x="728" y="826" class="h">SAFETY</text>
+<text x="728" y="852" class="s" style="font-size:12.5px">probes on throwaway exports · scrubbed env · network proxied to a dead port · rlimits + hard timeout</text>
+<text x="728" y="872" class="s" style="font-size:12.5px">read-only on the investigated repo · only regression-detective/* branches · draft PRs only</text>
+<text x="728" y="892" class="s" style="font-size:12.5px">no culprit without a counterfactual · every claim must cite a recorded observation</text>
+</svg></body></html>

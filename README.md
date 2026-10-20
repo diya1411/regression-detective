@@ -136,7 +136,7 @@ Architecture details, likelihood models and the policy maths are in [docs/archit
 
 ```
 detective/
-  agents/      orchestrator + 8 specialists, prompts and schemas
+  agents/      orchestrator + 9 specialists, prompts and schemas
   tools/       git, forge (GitHub REST / local export), PyPI registry, pytest report, AST
   sandbox/     process sandbox (cached virtualenvs), dependency discovery, the runner each probe executes
   rag/         corpora (code / docs / history / CI archive), BM25 + dense + RRF
