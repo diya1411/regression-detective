@@ -21,7 +21,6 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = ["pytest>=8", "pytest-json-report>=1.5"]
-docker = ["docker>=7.0"]
 
 [project.scripts]
 regression-detective = "detective.__main__:main"

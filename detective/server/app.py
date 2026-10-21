@@ -1,7 +1,7 @@
 """Web UI + API. Investigations run in background threads; the UI follows them over Server-Sent Events.
 
 Because every investigation is an append-only event log, a live run and a replay of a finished run
-are the same stream (replay can be paced with ?speed=N) — a reliable demo even without Docker.
+are the same stream (replay can be paced with ?speed=N) — a reliable demo.
 """
 from __future__ import annotations
 

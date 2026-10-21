@@ -97,8 +97,9 @@ class HashingEmbedder:
 class GeminiEmbedder:
     """Gemini embeddings with an on-disk cache keyed by content hash."""
 
-    def __init__(self, client, model: str, cache_dir: Path, dim: int = 768):
+    def __init__(self, client, model: str, cache_dir: Path, dim: int = 768, max_docs: int = 80):
         self.client, self.model, self.dim = client, model, dim
+        self.max_docs = max_docs   # stay under the free tier's 100 embedding requests/minute
         self.name = f"{model}-{dim}"
         self.cache_dir = cache_dir / "embeddings" / self.name
         self.cache_dir.mkdir(parents=True, exist_ok=True)
@@ -129,12 +130,20 @@ class GeminiEmbedder:
         return np.vstack(out) if out else np.zeros((0, self.dim), dtype=np.float32)
 
 
+# Which documents get dense vectors first when the embedding budget is limited (Gemini free tier:
+# 100 embedding requests/minute). Everything is always searchable through BM25.
+DENSE_PRIORITY = {"docs": 0, "history": 1, "ci": 2, "code": 3}
+
+
 class HybridIndex:
-    def __init__(self, embedder):
+    def __init__(self, embedder, max_dense: int | None = None):
         self.embedder = embedder
+        self.max_dense = max_dense if max_dense is not None else getattr(embedder, "max_docs", None)
         self.docs: list[Doc] = []
         self.bm25: BM25 | None = None
         self.vecs: np.ndarray | None = None
+        self.dense_mask: np.ndarray | None = None
+        self.note = ""
 
     def add(self, docs: list[Doc]) -> None:
         self.docs.extend(docs)
@@ -142,8 +151,29 @@ class HybridIndex:
     def build(self) -> None:
         toks = [tokenize(d.title + "\n" + d.text) for d in self.docs]
         self.bm25 = BM25(toks)
+        if not self.docs:
+            self.vecs = self.dense_mask = None
+            return
         texts = [f"{d.title}\n{d.text}"[:6000] for d in self.docs]
-        self.vecs = self.embedder.embed(texts) if texts else None
+        order = sorted(range(len(self.docs)), key=lambda i: DENSE_PRIORITY.get(self.docs[i].corpus, 4))
+        pick = order[: self.max_dense] if self.max_dense else order
+        try:
+            sub = self.embedder.embed([texts[i] for i in pick])
+        except Exception as e:  # quota, network, auth: degrade to the offline embedder, never crash
+            self._fallback(e)
+            return self.build()
+        vecs = np.zeros((len(self.docs), sub.shape[1]), dtype=np.float32)
+        vecs[pick] = sub
+        self.vecs = vecs
+        self.dense_mask = np.zeros(len(self.docs), dtype=bool)
+        self.dense_mask[pick] = True
+        if len(pick) < len(self.docs):
+            self.note = f"dense vectors for {len(pick)}/{len(self.docs)} chunks (embedding budget); BM25 covers all"
+
+    def _fallback(self, err: Exception) -> None:
+        self.note = f"{getattr(self.embedder, 'name', 'embedder')} unavailable ({str(err)[:80]}); using hashing embedder"
+        self.embedder = HashingEmbedder()
+        self.max_dense = None
 
     def search(self, query: str, k: int = 5, where: Callable[[Doc], bool] | None = None,
                rrf_k: int = 60) -> list[tuple[Doc, float, dict]]:
@@ -156,9 +186,14 @@ class HybridIndex:
         lex[~mask] = -np.inf
         dense = np.full(len(self.docs), -np.inf)
         if self.vecs is not None:
-            qv = self.embedder.embed([query], query=True)[0]
-            dense = self.vecs @ qv
-            dense[~mask] = -np.inf
+            try:
+                qv = self.embedder.embed([query], query=True)[0]
+                dense = self.vecs @ qv
+                dense[~mask] = -np.inf
+                if self.dense_mask is not None:
+                    dense[~self.dense_mask] = -np.inf
+            except Exception:   # query embedding failed: rank by BM25 alone for this query
+                dense = np.full(len(self.docs), -np.inf)
         ranks: dict[int, dict] = {}
         for name, arr in (("bm25", lex), ("dense", dense)):
             order = [i for i in np.argsort(-arr) if np.isfinite(arr[i]) and (name == "dense" or arr[i] > 0)]
@@ -167,6 +202,8 @@ class HybridIndex:
         fused = []
         for i, rr in ranks.items():
             score = sum(1.0 / (rrf_k + r) for r in rr.values())
+            if self.dense_mask is not None and not self.dense_mask[i] and "bm25" in rr:
+                score *= 2   # no vector (embedding budget): let BM25 stand in for the missing dense rank
             fused.append((self.docs[i], score, {"bm25_rank": rr.get("bm25"), "dense_rank": rr.get("dense"),
                                                  "bm25": float(lex[i]) if np.isfinite(lex[i]) else None,
                                                  "cosine": float(dense[i]) if np.isfinite(dense[i]) else None}))

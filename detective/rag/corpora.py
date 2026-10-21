@@ -112,7 +112,7 @@ class Retriever:
         self.index.build()
         self.indexed_shas.add(sha)
         self.stats = {c: sum(d.corpus == c for d in self.index.docs) for c in ("code", "docs", "history", "ci")}
-        self.stats["embedder"] = self.embedder.name  # type: ignore[assignment]
+        self.stats["embedder"] = self.index.embedder.name + (f" — {self.index.note}" if self.index.note else "")  # type: ignore[assignment]
         return self.stats
 
     def add_commit(self, sha: str, paths: list[str]) -> None:

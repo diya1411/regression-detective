@@ -130,3 +130,25 @@ def test_symptom_parse():
 def test_intent_detection_respects_negation():
     assert intent_hits("Pure performance change, no behaviour change intended.") == []
     assert intent_hits("This intentionally changes totals; tests must be updated.")
+
+
+def test_embedding_quota_falls_back_and_budget_limits_dense():
+    class QuotaEmbedder:
+        name = "gemini-embedding-001-768"
+        max_docs = 2
+
+        def embed(self, texts, query=False):
+            raise RuntimeError("429 RESOURCE_EXHAUSTED embed_content_free_tier_requests")
+
+    docs = [Doc(str(i), "code", f"f{i}", f"def line_total_{i}(): pass") for i in range(5)]
+    idx = HybridIndex(QuotaEmbedder())
+    idx.add(docs)
+    idx.build()                                   # must not raise
+    assert isinstance(idx.embedder, HashingEmbedder) and "unavailable" in idx.note
+    assert idx.search("line_total_3", k=1)[0][0].id == "3"
+
+    budget = HybridIndex(HashingEmbedder(), max_dense=2)
+    budget.add(docs + [Doc("d", "docs", "pricing", "totals reflect catalog prices")])
+    budget.build()
+    assert budget.dense_mask.sum() == 2 and budget.dense_mask[-1]   # docs corpus embedded first
+    assert budget.search("line_total_4", k=1)[0][0].id == "4"       # BM25 still finds unembedded chunks

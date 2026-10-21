@@ -1,4 +1,4 @@
-"""Sandbox interface and the probe logic shared by the Docker and local backends."""
+"""Sandbox interface and the shared probe logic (export, patch, run, parse verdict)."""
 from __future__ import annotations
 
 import json
